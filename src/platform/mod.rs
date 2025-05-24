@@ -7,8 +7,8 @@ pub mod unix;
 #[cfg(target_family = "windows")]
 pub mod windows;
 
-#[cfg(target_family = "windows")]
-pub use windows::WindowsPlatform;
+#[cfg(target_family = "unix")]
+pub use unix::UnixPlatform;
 
 #[allow(dead_code)]
 pub trait Platform {

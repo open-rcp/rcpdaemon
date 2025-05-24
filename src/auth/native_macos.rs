@@ -2,10 +2,9 @@ use crate::auth::provider::AuthProvider;
 use crate::server::user::{User, UserRole};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use log::{debug, error, info, warn};
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
 use std::process::Command;
 use uuid::Uuid;
 
@@ -66,7 +65,7 @@ impl MacOSAuthProvider {
     fn is_member_of_group(&self, username: &str, group: &str) -> Result<bool> {
         // Use dscl to check group membership
         let output = Command::new("dscl")
-            .args(&[
+            .args([
                 ".",
                 "-read",
                 &format!("/Groups/{}", group),
@@ -91,7 +90,7 @@ impl MacOSAuthProvider {
 
         // Use dscl to get all groups
         let output = Command::new("dscl")
-            .args(&[".", "-list", "/Groups", "GroupMembership"])
+            .args([".", "-list", "/Groups", "GroupMembership"])
             .output()?;
 
         if !output.status.success() {
@@ -160,14 +159,14 @@ impl MacOSAuthProvider {
 
         // For demonstration purposes, we'll use the `login` utility
         // WARNING: This is not secure and is just for demonstration
-        let password_str = String::from_utf8_lossy(password);
+        let _password_str = String::from_utf8_lossy(password);
 
         // In a real implementation, use the macOS Security framework
         // or a proper PAM binding to validate credentials
 
         // For now, we'll just check if the user exists
         let output = Command::new("dscl")
-            .args(&[".", "-read", &format!("/Users/{}", username)])
+            .args([".", "-read", &format!("/Users/{}", username)])
             .output()?;
 
         Ok(output.status.success())
@@ -196,14 +195,14 @@ impl AuthProvider for MacOSAuthProvider {
             "psk" => {
                 // For PSK, we just check if the user exists and is allowed
                 if !self.config.allow_all_users {
-                    if let Some(ref required_group) = self.config.require_group {
-                        return Ok(self.is_member_of_group(username, required_group)?);
+                    if let Some(required_group) = &self.config.require_group {
+                        return self.is_member_of_group(username, required_group);
                     }
                 }
 
                 // Check if user exists
                 let output = Command::new("dscl")
-                    .args(&[".", "-read", &format!("/Users/{}", username)])
+                    .args([".", "-read", &format!("/Users/{}", username)])
                     .output()?;
 
                 Ok(output.status.success())
@@ -230,7 +229,7 @@ impl AuthProvider for MacOSAuthProvider {
 
         // Check if user exists
         let output = Command::new("dscl")
-            .args(&[".", "-read", &format!("/Users/{}", username)])
+            .args([".", "-read", &format!("/Users/{}", username)])
             .output()?;
 
         if !output.status.success() {
@@ -273,7 +272,7 @@ impl AuthProvider for MacOSAuthProvider {
         Ok(Some(user))
     }
 
-    async fn get_user(&self, id: &Uuid) -> Result<Option<User>> {
+    async fn get_user(&self, _id: &Uuid) -> Result<Option<User>> {
         // Since we generate UUIDs based on usernames, we can't easily
         // look up by UUID without listing all users. For efficiency,
         // we'll return None and let the caller use get_user_by_username instead.
@@ -286,7 +285,7 @@ impl AuthProvider for MacOSAuthProvider {
     async fn list_users(&self) -> Result<Vec<User>> {
         // Get all users from directory services
         let output = Command::new("dscl")
-            .args(&[".", "-list", "/Users"])
+            .args([".", "-list", "/Users"])
             .output()?;
 
         if !output.status.success() {

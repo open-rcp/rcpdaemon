@@ -1,7 +1,6 @@
-use crate::server::user::{User, UserRole};
+use crate::server::user::User;
 use anyhow::Result;
 use async_trait::async_trait;
-use std::path::Path;
 use uuid::Uuid;
 
 /// Authentication provider interface for RCP

@@ -30,13 +30,13 @@ pub struct Cli {
 
     /// Command to execute
     #[clap(subcommand)]
-    pub command: Option<rcpdaemonCommand>,
+    pub command: Option<RcpdaemonCommand>,
 }
 
 /// Top-level rcpdaemon commands
 #[cfg(feature = "cli")]
 #[derive(Parser, Debug)]
-pub enum rcpdaemonCommand {
+pub enum RcpdaemonCommand {
     /// Daemon management commands
     Daemon {
         /// Daemon subcommand

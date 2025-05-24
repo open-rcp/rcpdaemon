@@ -7,7 +7,7 @@
 mod cli_tests {
     use clap::Parser;
     use rcpdaemon::cli::types::{
-        rcpdaemonCommand, AppCommand, Cli, ConfigCommand, DiagCommand, ServerCommand,
+        RcpdaemonCommand, AppCommand, Cli, ConfigCommand, DiagCommand, ServerCommand,
         ServiceCommand, SessionCommand, UserCommand,
     };
 
@@ -15,7 +15,7 @@ mod cli_tests {
     fn test_parse_daemon_command() {
         let cli = Cli::parse_from(&["rcpdaemon", "daemon"]);
         match cli.command {
-            Some(rcpdaemonCommand::Daemon { command: None }) => {}
+            Some(RcpdaemonCommand::Daemon { command: None }) => {}
             _ => panic!("Expected Daemon command"),
         }
     }
@@ -24,7 +24,7 @@ mod cli_tests {
     fn test_parse_server_command() {
         let cli = Cli::parse_from(&["rcpdaemon", "server", "status"]);
         match cli.command {
-            Some(rcpdaemonCommand::Server { command }) => {
+            Some(RcpdaemonCommand::Server { command }) => {
                 assert!(matches!(command, ServerCommand::Status));
             }
             _ => panic!("Expected Server command"),
@@ -35,7 +35,7 @@ mod cli_tests {
     fn test_parse_service_command() {
         let cli = Cli::parse_from(&["rcpdaemon", "service", "status"]);
         match cli.command {
-            Some(rcpdaemonCommand::Service { command }) => {
+            Some(RcpdaemonCommand::Service { command }) => {
                 assert!(matches!(command, ServiceCommand::Status));
             }
             _ => panic!("Expected Service command"),
@@ -46,7 +46,7 @@ mod cli_tests {
     fn test_parse_app_command() {
         let cli = Cli::parse_from(&["rcpdaemon", "app", "list"]);
         match cli.command {
-            Some(rcpdaemonCommand::App { command }) => {
+            Some(RcpdaemonCommand::App { command }) => {
                 assert!(matches!(command, AppCommand::List));
             }
             _ => panic!("Expected App command"),
@@ -57,7 +57,7 @@ mod cli_tests {
     fn test_parse_session_command() {
         let cli = Cli::parse_from(&["rcpdaemon", "session", "list"]);
         match cli.command {
-            Some(rcpdaemonCommand::Session { command }) => {
+            Some(RcpdaemonCommand::Session { command }) => {
                 assert!(matches!(command, SessionCommand::List));
             }
             _ => panic!("Expected Session command"),
@@ -68,7 +68,7 @@ mod cli_tests {
     fn test_parse_user_command() {
         let cli = Cli::parse_from(&["rcpdaemon", "user", "list"]);
         match cli.command {
-            Some(rcpdaemonCommand::User { command }) => {
+            Some(RcpdaemonCommand::User { command }) => {
                 assert!(matches!(command, UserCommand::List));
             }
             _ => panic!("Expected User command"),
@@ -79,7 +79,7 @@ mod cli_tests {
     fn test_parse_config_command() {
         let cli = Cli::parse_from(&["rcpdaemon", "config", "get", "server.port"]);
         match cli.command {
-            Some(rcpdaemonCommand::Config { command }) => {
+            Some(RcpdaemonCommand::Config { command }) => {
                 assert!(matches!(command, ConfigCommand::Get { key } if key == "server.port"));
             }
             _ => panic!("Expected Config command"),
@@ -90,7 +90,7 @@ mod cli_tests {
     fn test_parse_diag_command() {
         let cli = Cli::parse_from(&["rcpdaemon", "diag", "system"]);
         match cli.command {
-            Some(rcpdaemonCommand::Diag { command }) => {
+            Some(RcpdaemonCommand::Diag { command }) => {
                 assert!(matches!(command, DiagCommand::System));
             }
             _ => panic!("Expected Diag command"),
@@ -101,7 +101,7 @@ mod cli_tests {
     fn test_parse_completions_command() {
         let cli = Cli::parse_from(&["rcpdaemon", "completions", "bash"]);
         match cli.command {
-            Some(rcpdaemonCommand::Completions { shell }) => {
+            Some(RcpdaemonCommand::Completions { shell }) => {
                 assert_eq!(shell.to_string(), "bash");
             }
             _ => panic!("Expected Completions command"),

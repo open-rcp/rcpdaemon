@@ -2,11 +2,9 @@ use crate::auth::provider::AuthProvider;
 use crate::server::user::{User, UserRole};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use log::{debug, error, info, warn};
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
 use std::process::Command;
 use uuid::Uuid;
 
@@ -66,7 +64,7 @@ impl WindowsAuthProvider {
     /// Check if a user is a member of a group using Windows commands
     fn is_member_of_group(&self, username: &str, group: &str) -> Result<bool> {
         // Use net user to check group membership
-        let output = Command::new("net").args(&["user", username]).output()?;
+        let output = Command::new("net").args(["user", username]).output()?;
 
         if !output.status.success() {
             return Ok(false);
@@ -98,7 +96,7 @@ impl WindowsAuthProvider {
         }
 
         // Use net user to get all groups
-        let output = Command::new("net").args(&["user", username]).output()?;
+        let output = Command::new("net").args(["user", username]).output()?;
 
         if !output.status.success() {
             return Err(anyhow!("Failed to get groups for user: {}", username));
@@ -173,7 +171,7 @@ impl WindowsAuthProvider {
         // you would use Windows authentication APIs (LogonUser, etc.)
 
         // For now, we'll just check if the user exists
-        let output = Command::new("net").args(&["user", username]).output()?;
+        let output = Command::new("net").args(["user", username]).output()?;
 
         Ok(output.status.success())
     }
@@ -201,8 +199,8 @@ impl AuthProvider for WindowsAuthProvider {
             "psk" => {
                 // For PSK, we just check if the user exists and is allowed
                 if !self.config.allow_all_users {
-                    if let Some(ref required_group) = self.config.require_group {
-                        return Ok(self.is_member_of_group(username, required_group)?);
+                    if let Some(required_group) = &self.config.require_group {
+                        return self.is_member_of_group(username, required_group);
                     }
                 }
 
@@ -229,7 +227,7 @@ impl AuthProvider for WindowsAuthProvider {
         }
 
         // Check if user exists
-        let output = Command::new("net").args(&["user", username]).output()?;
+        let output = Command::new("net").args(["user", username]).output()?;
 
         if !output.status.success() {
             return Ok(None);
@@ -276,7 +274,7 @@ impl AuthProvider for WindowsAuthProvider {
         Ok(Some(user))
     }
 
-    async fn get_user(&self, id: &Uuid) -> Result<Option<User>> {
+    async fn get_user(&self, _id: &Uuid) -> Result<Option<User>> {
         // Since we generate UUIDs based on usernames, we can't easily
         // look up by UUID without listing all users. For efficiency,
         // we'll return None and let the caller use get_user_by_username instead.
@@ -288,7 +286,7 @@ impl AuthProvider for WindowsAuthProvider {
 
     async fn list_users(&self) -> Result<Vec<User>> {
         // Get all users using Windows commands
-        let output = Command::new("net").args(&["user"]).output()?;
+        let output = Command::new("net").args(["user"]).output()?;
 
         if !output.status.success() {
             return Err(anyhow!("Failed to list users"));

@@ -20,6 +20,12 @@ pub struct MockAuthProvider {
     initialized: bool,
 }
 
+impl Default for MockAuthProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockAuthProvider {
     /// Create a new mock provider with default settings
     pub fn new() -> Self {
@@ -49,7 +55,7 @@ impl MockAuthProvider {
         let entry = self
             .permissions
             .entry(username.to_string())
-            .or_insert_with(Vec::new);
+            .or_default();
         entry.push(permission.to_string());
         self
     }

@@ -1,12 +1,11 @@
 use crate::auth::factory::{AuthConfig, AuthProviderFactory, AuthProviderType};
 use crate::auth::provider::AuthProvider;
-use crate::server::user::{User, UserRole};
+use crate::server::user::User;
 
-use anyhow::{anyhow, Result};
-use log::{debug, error, info, warn};
+use anyhow::Result;
+use log::{error, info, warn};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use uuid::Uuid;
 
 /// Authentication manager that uses the configured provider
 pub struct AuthManager {

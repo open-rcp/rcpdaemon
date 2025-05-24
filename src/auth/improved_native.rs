@@ -43,48 +43,51 @@ pub fn get_macos_user_groups(
 
     // Use dscl to get all groups
     let output = Command::new("dscl")
-        .args(&[".", "-list", "/Groups", "GroupMembership"])
+        .args([".", "-list", "/Groups", "GroupMembership"])
         .output()?;
 
     if !output.status.success() {
-        return Err(anyhow!(
-            "Failed to list groups: {:?}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
+        return Err(anyhow!("Failed to list groups"));
     }
 
     let output_str = String::from_utf8_lossy(&output.stdout);
-    let mut groups = Vec::new();
+    let mut group_memberships: HashMap<String, Vec<String>> = HashMap::new();
 
     for line in output_str.lines() {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() > 1 {
             let group_name = parts[0];
-            let members = parts[1..].iter().cloned().collect::<Vec<&str>>();
+            let members = parts[1..].to_vec();
 
-            if members.contains(&username) {
-                groups.push(group_name.to_string());
+            for member in members {
+                group_memberships
+                    .entry(member.to_string())
+                    .or_default()
+                    .push(group_name.to_string());
             }
         }
     }
 
-    // Check for empty results - this could indicate an error
-    if groups.is_empty() {
-        warn!("No groups found for user: {}", username);
+    // Get the user's primary group
+    let primary_output = Command::new("id").args(["-gn", username]).output()?;
 
-        // As a fallback, try getting primary group
-        let primary_output = Command::new("id").args(&["-gn", username]).output()?;
-
-        if primary_output.status.success() {
-            let primary_group = String::from_utf8_lossy(&primary_output.stdout)
-                .trim()
-                .to_string();
-            if !primary_group.is_empty() {
-                debug!("Adding primary group for {}: {}", username, primary_group);
-                groups.push(primary_group);
-            }
+    if primary_output.status.success() {
+        let primary_group = String::from_utf8_lossy(&primary_output.stdout)
+            .trim()
+            .to_string();
+        if !primary_group.is_empty() {
+            debug!("Adding primary group for {}: {}", username, primary_group);
+            group_memberships
+                .entry(username.to_string())
+                .or_default()
+                .push(primary_group);
         }
     }
+
+    // Collect all groups for the user
+    let groups = group_memberships
+        .remove(username)
+        .unwrap_or_default();
 
     debug!("Found groups for {}: {:?}", username, groups);
 
@@ -124,7 +127,6 @@ pub fn get_linux_user_groups(
     let parts: Vec<&str> = groups_str.split(':').collect();
     let groups: Vec<String> = if parts.len() > 1 {
         parts[1]
-            .trim()
             .split_whitespace()
             .map(|s| s.to_string())
             .collect()
@@ -164,7 +166,7 @@ pub fn get_windows_user_groups(
     );
 
     let output = Command::new("powershell")
-        .args(&["-Command", &ps_command])
+        .args(["-Command", &ps_command])
         .output()?;
 
     if !output.status.success() {
@@ -203,14 +205,12 @@ pub fn get_unix_user_groups(
     debug!("Getting groups for user: {}", username);
 
     let mut groups = Vec::new();
-    let mut found_groups = false; // Renamed from 'success' for clarity
 
     // First approach: Use the 'groups' command which is available on most Unix systems
     let output = Command::new("groups").arg(username).output();
 
     if let Ok(output) = output {
         if output.status.success() {
-            found_groups = true; // Mark that we found groups
             let output_str = String::from_utf8_lossy(&output.stdout);
 
             // Parse output which might be in one of these formats:
@@ -237,14 +237,14 @@ pub fn get_unix_user_groups(
     }
 
     // If the groups command failed or returned empty results, try alternate methods
-    if !found_groups || groups.is_empty() {
+    if groups.is_empty() {
         warn!(
             "No groups found for user: {} using 'groups' command, trying alternate methods",
             username
         );
 
         // Fallback 1: Try using getent
-        let getent_output = Command::new("getent").args(&["group"]).output();
+        let getent_output = Command::new("getent").args(["group"]).output();
 
         if let Ok(output) = getent_output {
             if output.status.success() {
@@ -267,7 +267,7 @@ pub fn get_unix_user_groups(
                 }
 
                 if !groups.is_empty() {
-                    found_groups = true;
+                    debug!("Found non-empty groups list using getent: {}", !groups.is_empty());
                 }
             } else {
                 debug!("'getent group' command failed or not available");
@@ -275,9 +275,9 @@ pub fn get_unix_user_groups(
         }
 
         // Fallback 2: Try 'id -G -n' command (works on most BSD systems and some Unix variants)
-        if !found_groups || groups.is_empty() {
+        if groups.is_empty() {
             debug!("Trying 'id -G -n' command");
-            let id_output = Command::new("id").args(&["-G", "-n", username]).output();
+            let id_output = Command::new("id").args(["-G", "-n", username]).output();
 
             if let Ok(output) = id_output {
                 if output.status.success() {
@@ -291,16 +291,15 @@ pub fn get_unix_user_groups(
                         }
 
                         debug!("Found groups using 'id' command: {:?}", groups);
-                        // We only want to track if we found groups successfully for debugging
-                        // and don't need to use this value later
-                        let _ = groups.len() > 0;
+                        // Successfully found groups using id command
+                        debug!("Successfully found groups using id command");
                     }
                 }
             }
         }
 
         // Fallback 3: Check /etc/group directly (works on most Unix systems)
-        if !found_groups || groups.is_empty() {
+        if groups.is_empty() {
             debug!("Trying to parse /etc/group file directly");
             if let Ok(group_contents) = std::fs::read_to_string("/etc/group") {
                 for line in group_contents.lines() {
@@ -319,7 +318,9 @@ pub fn get_unix_user_groups(
                 }
 
                 if !groups.is_empty() {
-                    found_groups = true;
+                    debug!("Found non-empty groups list using /etc/group file");
+                } else {
+                    debug!("Found groups using /etc/group file");
                 }
             } else {
                 debug!("Could not read /etc/group file");
@@ -442,7 +443,7 @@ pub fn map_permissions_common(
     if permissions.is_empty()
         && require_group
             .as_ref()
-            .map_or(false, |required_group| groups.contains(&required_group))
+            .is_some_and(|required_group| groups.contains(required_group))
     {
         permissions.push("connect:basic".to_string());
     }

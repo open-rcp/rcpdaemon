@@ -1,7 +1,7 @@
 use crate::auth::mock_provider::MockAuthProvider;
 use crate::auth::provider::AuthProvider;
 use anyhow::{anyhow, Result};
-use log::{info, warn};
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
