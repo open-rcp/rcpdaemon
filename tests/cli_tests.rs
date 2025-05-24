@@ -7,7 +7,7 @@
 mod cli_tests {
     use clap::Parser;
     use rcpdaemon::cli::types::{
-        RcpdaemonCommand, AppCommand, Cli, ConfigCommand, DiagCommand, ServerCommand,
+        AppCommand, Cli, ConfigCommand, DiagCommand, RcpdaemonCommand, ServerCommand,
         ServiceCommand, SessionCommand, UserCommand,
     };
 

@@ -85,9 +85,7 @@ pub fn get_macos_user_groups(
     }
 
     // Collect all groups for the user
-    let groups = group_memberships
-        .remove(username)
-        .unwrap_or_default();
+    let groups = group_memberships.remove(username).unwrap_or_default();
 
     debug!("Found groups for {}: {:?}", username, groups);
 
@@ -126,10 +124,7 @@ pub fn get_linux_user_groups(
     // Format is typically: "username : group1 group2 group3"
     let parts: Vec<&str> = groups_str.split(':').collect();
     let groups: Vec<String> = if parts.len() > 1 {
-        parts[1]
-            .split_whitespace()
-            .map(|s| s.to_string())
-            .collect()
+        parts[1].split_whitespace().map(|s| s.to_string()).collect()
     } else {
         // Some systems might just return the groups without the username prefix
         groups_str
@@ -267,7 +262,10 @@ pub fn get_unix_user_groups(
                 }
 
                 if !groups.is_empty() {
-                    debug!("Found non-empty groups list using getent: {}", !groups.is_empty());
+                    debug!(
+                        "Found non-empty groups list using getent: {}",
+                        !groups.is_empty()
+                    );
                 }
             } else {
                 debug!("'getent group' command failed or not available");

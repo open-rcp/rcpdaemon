@@ -52,10 +52,7 @@ impl MockAuthProvider {
 
     /// Add a permission for a user
     pub fn with_permission(mut self, username: &str, permission: &str) -> Self {
-        let entry = self
-            .permissions
-            .entry(username.to_string())
-            .or_default();
+        let entry = self.permissions.entry(username.to_string()).or_default();
         entry.push(permission.to_string());
         self
     }
