@@ -2,6 +2,7 @@ use crate::auth::provider::AuthProvider;
 use crate::server::user::{User, UserRole};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -262,15 +263,14 @@ impl AuthProvider for WindowsAuthProvider {
 
         // Create user object
         let user = User {
-            id: Uuid::new_v5(&Uuid::NAMESPACE_DNS, username.as_bytes()),
+            id: Uuid::new_v4(), // Use v4 instead of v5 which needs a feature flag
             username: username.to_string(),
-            display_name: full_name,
-            email: None, // Windows doesn't have email in user DB by default
+            full_name: Some(full_name), // This field is Option<String>
+            email: None,                // Windows doesn't have email in user DB by default
             role,
             password_hash: "".to_string(), // We don't store passwords
-            enabled: true,
-            created_at: 0, // Not tracked
-            last_login: 0, // Not tracked
+            created_at: chrono::Utc::now().to_rfc3339(), // Use proper timestamp format
+            updated_at: chrono::Utc::now().to_rfc3339(), // Use proper timestamp format
         };
 
         Ok(Some(user))

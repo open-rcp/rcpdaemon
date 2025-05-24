@@ -265,7 +265,10 @@ async fn get_logs(lines: usize) -> Result<Vec<String>> {
             _ => "Failed to connect to database",
         };
 
-        logs.push(format!("{} {} rcpdaemon: {}", formatted_time, level, message));
+        logs.push(format!(
+            "{} {} rcpdaemon: {}",
+            formatted_time, level, message
+        ));
     }
 
     // Reverse to show newest logs last (chronological order)

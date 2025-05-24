@@ -1,8 +1,6 @@
 use crate::{config::ServiceConfig, error::ServiceError, manager::ServiceManager};
 use anyhow::Result;
-use daemonize::Daemonize;
 use log::{error, info};
-use std::fs::File;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
 
@@ -54,35 +52,23 @@ impl ServiceDaemon {
     }
 }
 
-/// Daemonize the current process
+/// Daemonize the current process (Unix only)
+#[cfg(unix)]
 pub fn daemonize(work_dir: &PathBuf) -> Result<()> {
+    use std::fs::File;
+
     info!("Daemonizing process");
 
-    // Create PID file for daemon
-    #[cfg(feature = "cli")]
-    let pid_file = dirs::runtime_dir()
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("rcpdaemon.pid");
-    #[cfg(not(feature = "cli"))]
     let pid_file = std::env::temp_dir().join("rcpdaemon.pid");
-
-    // Create log file for daemon
-    #[cfg(feature = "cli")]
-    let log_file = dirs::runtime_dir()
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("rcpdaemon.log");
-    #[cfg(not(feature = "cli"))]
     let log_file = std::env::temp_dir().join("rcpdaemon.log");
 
-    // Create daemonize config
-    let daemonize = Daemonize::new()
+    let daemonize = daemonize::Daemonize::new()
         .pid_file(pid_file)
         .chown_pid_file(true)
         .working_directory(work_dir)
         .stdout(File::create(&log_file).unwrap())
         .stderr(File::create(&log_file).unwrap());
 
-    // Start daemon
     daemonize.start().map_err(|e| {
         error!("Error starting daemon: {}", e);
         anyhow::anyhow!("Failed to start daemon: {}", e)
@@ -91,40 +77,26 @@ pub fn daemonize(work_dir: &PathBuf) -> Result<()> {
     Ok(())
 }
 
+/// Windows service implementation (placeholder)
+#[cfg(windows)]
+pub fn daemonize(_work_dir: &PathBuf) -> Result<()> {
+    info!("Windows service mode - daemonize not needed");
+    Ok(())
+}
+
 /// Start the daemon service
 pub fn start(config: ServiceConfig, work_dir: PathBuf) -> Result<()> {
     info!("Starting daemon service");
 
-    // Create runtime for daemon
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
 
-    // Start daemon in runtime
     runtime.block_on(async {
-        // Create shutdown channel
         let (shutdown_tx, shutdown_rx) = mpsc::channel::<()>(1);
 
-        // Setup signal handlers
-        let mut sigterm =
-            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
-        let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
+        setup_signal_handlers(shutdown_tx).await?;
 
-        // Spawn signal handler tasks
-        tokio::spawn(async move {
-            tokio::select! {
-                _ = sigterm.recv() => {
-                    info!("Shutdown signal received");
-                    let _ = shutdown_tx.send(()).await;
-                }
-                _ = sigint.recv() => {
-                    info!("Ctrl+C received, shutting down");
-                    let _ = shutdown_tx.send(()).await;
-                }
-            }
-        });
-
-        // Create and start daemon
         let mut daemon = ServiceDaemon::new(config, work_dir, shutdown_rx);
         daemon
             .start()
@@ -135,62 +107,133 @@ pub fn start(config: ServiceConfig, work_dir: PathBuf) -> Result<()> {
     Ok(())
 }
 
+/// Setup signal handlers (Unix)
+#[cfg(unix)]
+async fn setup_signal_handlers(shutdown_tx: mpsc::Sender<()>) -> Result<()> {
+    use tokio::signal::unix::{signal, SignalKind};
+
+    let mut sigterm = signal(SignalKind::terminate())?;
+    let mut sigint = signal(SignalKind::interrupt())?;
+
+    tokio::spawn(async move {
+        tokio::select! {
+            _ = sigterm.recv() => {
+                info!("SIGTERM received, shutting down");
+                let _ = shutdown_tx.send(()).await;
+            }
+            _ = sigint.recv() => {
+                info!("SIGINT received, shutting down");
+                let _ = shutdown_tx.send(()).await;
+            }
+        }
+    });
+
+    Ok(())
+}
+
+/// Setup signal handlers (Windows)
+#[cfg(windows)]
+async fn setup_signal_handlers(shutdown_tx: mpsc::Sender<()>) -> Result<()> {
+    tokio::spawn(async move {
+        match tokio::signal::ctrl_c().await {
+            Ok(()) => {
+                info!("Ctrl+C received, shutting down");
+                let _ = shutdown_tx.send(()).await;
+            }
+            Err(err) => {
+                error!("Unable to listen for shutdown signal: {}", err);
+            }
+        }
+    });
+
+    Ok(())
+}
+
+/// Get daemon status
 pub fn status() -> Result<String> {
-    // Find PID file
-    #[cfg(feature = "cli")]
-    let pid_file = dirs::runtime_dir()
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("rcpdaemon.pid");
-    #[cfg(not(feature = "cli"))]
     let pid_file = std::env::temp_dir().join("rcpdaemon.pid");
 
-    // Check if PID file exists
     if !pid_file.exists() {
         return Ok("Not running".to_string());
     }
 
-    // Read PID from file
     let pid_data = std::fs::read_to_string(&pid_file)?;
-    let pid: i32 = pid_data.trim().parse()?;
+    let pid: u32 = pid_data.trim().parse()?;
 
-    // Check if process is running
-    let status = unsafe { libc::kill(pid, 0) };
-
-    if status == 0 {
+    if is_process_running(pid) {
         Ok(format!("Running (PID: {})", pid))
     } else {
         Ok("Not running (stale PID file)".to_string())
     }
 }
 
+/// Check if a process is running (Unix)
+#[cfg(unix)]
+fn is_process_running(pid: u32) -> bool {
+    let status = unsafe { libc::kill(pid as i32, 0) };
+    status == 0
+}
+
+/// Check if a process is running (Windows)
+#[cfg(windows)]
+fn is_process_running(pid: u32) -> bool {
+    use std::process::Command;
+
+    let output = Command::new("tasklist")
+        .args(&["/FI", &format!("PID eq {}", pid)])
+        .output();
+
+    match output {
+        Ok(output) => {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            output_str.contains(&pid.to_string())
+        }
+        Err(_) => false,
+    }
+}
+
+/// Stop the daemon
 pub fn stop() -> Result<()> {
     info!("Stopping daemon");
 
-    // Find PID file
-    #[cfg(feature = "cli")]
-    let pid_file = dirs::runtime_dir()
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("rcpdaemon.pid");
-    #[cfg(not(feature = "cli"))]
     let pid_file = std::env::temp_dir().join("rcpdaemon.pid");
 
-    // Read PID from file
     if !pid_file.exists() {
         return Err(anyhow::anyhow!("Daemon not running (no PID file)"));
     }
 
-    // Read PID from file
     let pid_data = std::fs::read_to_string(&pid_file)?;
-    let pid: i32 = pid_data.trim().parse()?;
+    let pid: u32 = pid_data.trim().parse()?;
 
-    // Kill process
-    unsafe {
-        libc::kill(pid, libc::SIGTERM);
-    }
+    terminate_process(pid)?;
 
-    // Remove PID file
     std::fs::remove_file(&pid_file)?;
 
     info!("Daemon stopped");
+    Ok(())
+}
+
+/// Terminate a process (Unix)
+#[cfg(unix)]
+fn terminate_process(pid: u32) -> Result<()> {
+    unsafe {
+        libc::kill(pid as i32, libc::SIGTERM);
+    }
+    Ok(())
+}
+
+/// Terminate a process (Windows)
+#[cfg(windows)]
+fn terminate_process(pid: u32) -> Result<()> {
+    use std::process::Command;
+
+    let output = Command::new("taskkill")
+        .args(&["/PID", &pid.to_string(), "/F"])
+        .output()?;
+
+    if !output.status.success() {
+        return Err(anyhow::anyhow!("Failed to terminate process {}", pid));
+    }
+
     Ok(())
 }
