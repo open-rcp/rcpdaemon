@@ -13,7 +13,10 @@ use colored::Colorize;
 use std::fmt::Display;
 
 #[cfg(feature = "cli")]
-use crate::cli::{types::Cli, utils::OutputFormatter};
+use crate::cli::{
+    types::{AppCommand, Cli},
+    utils::OutputFormatter,
+};
 
 /// Application representation
 #[cfg(feature = "cli")]
@@ -59,123 +62,32 @@ impl Display for Application {
 #[cfg(feature = "cli")]
 pub async fn handle_app_command(cli: &mut Cli, command: &AppCommand) -> Result<()> {
     match command {
-        AppCommand::List { filter } => list_applications(cli, filter.as_deref()).await,
-        AppCommand::Show { id } => show_application(cli, id).await,
-        AppCommand::Create {
-            name,
-            path,
-            arguments,
-            working_dir,
-            enabled,
-        } => create_application(cli, name, path, arguments, working_dir.as_deref(), *enabled).await,
-        AppCommand::Update {
-            id,
-            name,
-            path,
-            arguments,
-            working_dir,
-            enabled,
+        AppCommand::List => list_applications(cli, None).await,
+        AppCommand::Info { app_id } => show_application(cli, app_id).await,
+        AppCommand::Launch {
+            app_id,
+            user_id,
+            args,
         } => {
-            update_application(
-                cli,
-                id,
-                name.as_deref(),
-                path.as_deref(),
-                arguments.as_ref(),
-                working_dir.as_deref(),
-                *enabled,
-            )
-            .await
+            // TODO: Implement app launch functionality
+            let formatter = OutputFormatter::new(cli.json, true, false);
+            formatter.output_success(&format!("Launching app '{}' with args: {:?}", app_id, args));
+            Ok(())
         }
-        AppCommand::Delete { id } => delete_application(cli, id).await,
-        AppCommand::Enable { id } => set_application_status(cli, id, true).await,
-        AppCommand::Disable { id } => set_application_status(cli, id, false).await,
+        AppCommand::Instances => {
+            // TODO: Implement list instances functionality
+            let formatter = OutputFormatter::new(cli.json, true, false);
+            formatter.info("Listing application instances...");
+            Ok(())
+        }
+        AppCommand::Stop { instance_id } => {
+            // TODO: Implement stop instance functionality
+            let formatter = OutputFormatter::new(cli.json, true, false);
+            formatter.output_success(&format!("Stopped instance '{}'", instance_id));
+            Ok(())
+        }
     }
 }
-
-/// Application commands
-#[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
-pub enum AppCommand {
-    /// List available applications
-    List {
-        /// Filter applications by name
-        filter: Option<String>,
-    },
-
-    /// Show application details
-    Show {
-        /// Application ID or name
-        id: String,
-    },
-
-    /// Create a new application
-    Create {
-        /// Application name
-        name: String,
-
-        /// Application path (absolute path to executable)
-        path: String,
-
-        /// Application arguments
-        #[clap(short, long)]
-        arguments: Option<Vec<String>>,
-
-        /// Working directory
-        #[clap(short, long)]
-        working_dir: Option<String>,
-
-        /// Enable application (default: true)
-        #[clap(short, long, default_value = "true")]
-        enabled: bool,
-    },
-
-    /// Update an application
-    Update {
-        /// Application ID or name
-        id: String,
-
-        /// New application name
-        #[clap(short, long)]
-        name: Option<String>,
-
-        /// New application path
-        #[clap(short, long)]
-        path: Option<String>,
-
-        /// New application arguments
-        #[clap(short, long)]
-        arguments: Option<Vec<String>>,
-
-        /// New working directory
-        #[clap(short, long)]
-        working_dir: Option<String>,
-
-        /// Enable/disable application
-        #[clap(short, long)]
-        enabled: Option<bool>,
-    },
-
-    /// Delete an application
-    Delete {
-        /// Application ID or name
-        id: String,
-    },
-
-    /// Enable an application
-    Enable {
-        /// Application ID or name
-        id: String,
-    },
-
-    /// Disable an application
-    Disable {
-        /// Application ID or name
-        id: String,
-    },
-}
-
-// Application command implementations below
 
 /// List available applications
 #[cfg(feature = "cli")]

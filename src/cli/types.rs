@@ -9,7 +9,7 @@ use clap_complete::Shell;
 
 /// Main CLI struct for rcpdaemon
 #[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[clap(author, version, about, long_about = None)]
 pub struct Cli {
     /// Config file path
@@ -35,7 +35,7 @@ pub struct Cli {
 
 /// Top-level rcpdaemon commands
 #[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub enum RcpdaemonCommand {
     /// Daemon management commands
     Daemon {
@@ -103,7 +103,7 @@ pub enum RcpdaemonCommand {
 
 /// Daemon commands
 #[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub enum DaemonCommand {
     /// Start the daemon
     Start,
@@ -120,7 +120,7 @@ pub enum DaemonCommand {
 
 /// Service commands
 #[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub enum ServiceCommand {
     /// Display service status
     Status,
@@ -154,7 +154,7 @@ pub enum ServiceCommand {
 
 /// Server commands
 #[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub enum ServerCommand {
     /// Display server status
     Status,
@@ -171,7 +171,7 @@ pub enum ServerCommand {
 
 /// Server configuration actions
 #[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub enum ServerConfigAction {
     /// Display server configuration
     Display,
@@ -188,7 +188,7 @@ pub enum ServerConfigAction {
 
 /// Application commands
 #[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub enum AppCommand {
     /// List available applications
     List,
@@ -209,7 +209,6 @@ pub enum AppCommand {
         user_id: Option<String>,
 
         /// Additional arguments to pass to the application
-        #[clap(multiple = true)]
         args: Vec<String>,
     },
 
@@ -225,7 +224,7 @@ pub enum AppCommand {
 
 /// Session commands
 #[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub enum SessionCommand {
     /// List active sessions
     List,
@@ -245,7 +244,7 @@ pub enum SessionCommand {
 
 /// Configuration commands
 #[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub enum ConfigCommand {
     /// Display configuration
     Show,
@@ -274,7 +273,7 @@ pub enum ConfigCommand {
 
 /// User commands
 #[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub enum UserCommand {
     /// List users
     List,
@@ -316,7 +315,7 @@ pub enum UserCommand {
 
 /// Diagnostic commands
 #[cfg(feature = "cli")]
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub enum DiagCommand {
     /// Display system information
     System,

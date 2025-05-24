@@ -20,11 +20,19 @@ mod api;
 mod cli;
 
 use anyhow::Result;
-use clap::Parser;
 use log::{info, LevelFilter};
 use std::path::PathBuf;
 
-/// rcpdaemon - RCP Daemon
+#[cfg(feature = "cli")]
+use clap::Parser;
+#[cfg(feature = "cli")]
+use cli::types::Cli;
+
+#[cfg(not(feature = "cli"))]
+use clap::Parser;
+
+/// rcpdaemon - RCP Daemon (fallback CLI when cli feature is disabled)
+#[cfg(not(feature = "cli"))]
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
@@ -49,23 +57,19 @@ struct Cli {
     command: Option<ServiceCommand>,
 }
 
+#[cfg(not(feature = "cli"))]
 #[derive(Parser, Debug, Clone)]
 pub enum ServiceCommand {
     /// Start the daemon
     Start,
-
     /// Stop the daemon
     Stop,
-
     /// Restart the daemon
     Restart,
-
     /// Show daemon status
     Status,
-
     /// Install as system service
     Install,
-
     /// Uninstall system service
     Uninstall,
 }
@@ -90,6 +94,23 @@ async fn main() -> Result<()> {
 
     info!("rcpdaemon v{} initializing...", env!("CARGO_PKG_VERSION"));
 
+    #[cfg(feature = "cli")]
+    {
+        // Use the full CLI module when available
+        cli::handle_cli(cli).await?;
+    }
+
+    #[cfg(not(feature = "cli"))]
+    {
+        // Handle basic commands when CLI feature is disabled
+        handle_basic_commands(cli).await?;
+    }
+
+    Ok(())
+}
+
+#[cfg(not(feature = "cli"))]
+async fn handle_basic_commands(cli: Cli) -> Result<()> {
     // Load configuration
     let config_file = &cli.config;
     let config = match config::ServiceConfig::from_file(config_file) {
@@ -141,7 +162,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// Run rcpdaemon daemon
+#[cfg(not(feature = "cli"))]
 async fn run_daemon(cli: &Cli, config: config::ServiceConfig) -> Result<()> {
     #[cfg(feature = "api")]
     info!("Starting rcpdaemon (with API)...");

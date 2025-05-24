@@ -8,6 +8,7 @@ pub mod unix;
 pub mod windows;
 
 #[cfg(target_family = "unix")]
+#[allow(unused_imports)]
 pub use unix::UnixPlatform;
 
 #[allow(dead_code)]

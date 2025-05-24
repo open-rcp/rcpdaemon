@@ -12,27 +12,17 @@ use std::path::PathBuf;
 /// Configure command implementation
 #[cfg(feature = "cli")]
 pub async fn handle_config_command(
-    action: &str,
-    key: Option<&str>,
-    value: Option<&str>,
+    command: &crate::cli::types::ConfigCommand,
     config_path: Option<PathBuf>,
+    formatter: &crate::cli::utils::OutputFormatter,
 ) -> Result<(), CliError> {
-    match action {
-        "get" => get_config(key, config_path).await,
-        "set" => {
-            if let (Some(k), Some(v)) = (key, value) {
-                set_config(k, v, config_path).await
-            } else {
-                Err(CliError::CommandExecutionError(
-                    "Both key and value are required for set".to_string(),
-                ))
-            }
+    match command {
+        crate::cli::types::ConfigCommand::Get { key } => get_config(Some(key), config_path).await,
+        crate::cli::types::ConfigCommand::Set { key, value } => {
+            set_config(key, value, config_path).await
         }
-        "list" => list_config(config_path).await,
-        _ => Err(CliError::CommandExecutionError(format!(
-            "Unknown config action: {}",
-            action
-        ))),
+        crate::cli::types::ConfigCommand::Show => list_config(config_path).await,
+        crate::cli::types::ConfigCommand::Remove { key } => remove_config(key, config_path).await,
     }
 }
 
@@ -157,6 +147,40 @@ async fn set_config(key: &str, value: &str, config_path: Option<PathBuf>) -> Res
     // Save updated config
     save_config(&config, config_path.expect("Config path required to save"))?;
     formatter.success(&format!("Updated {} = {}", key, value));
+
+    Ok(())
+}
+
+/// Remove configuration value
+#[cfg(feature = "cli")]
+async fn remove_config(key: &str, config_path: Option<PathBuf>) -> Result<(), CliError> {
+    use crate::cli::utils::{load_config, save_config, OutputFormatter};
+
+    let mut config = load_config(config_path.clone())?;
+    let formatter = OutputFormatter::new(true, false, false);
+
+    // Reset config to default based on key
+    match key {
+        "host" => config.service.host = "127.0.0.1".to_string(),
+        "port" => config.service.port = 8716,
+        "use_tls" => config.service.use_tls = false,
+        "verify_cert" => config.service.skip_verify = false,
+        "format" => config.global.format = crate::cli::config::OutputFormat::Text,
+        "color" => config.global.color = true,
+        "json" => config.global.json = false,
+        "quiet" => config.global.quiet = false,
+        "timeout" => config.service.timeout = 30,
+        _ => {
+            return Err(CliError::ConfigurationError(format!(
+                "Unknown config key: {}",
+                key
+            )))
+        }
+    }
+
+    // Save updated config
+    save_config(&config, config_path.expect("Config path required to save"))?;
+    formatter.success(&format!("Reset {} to default value", key));
 
     Ok(())
 }

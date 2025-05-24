@@ -33,15 +33,13 @@ cli = [
     "atty"
 ]
 all = ["api", "cli"]
-dirs = ["dep:dirs"]
 
 [dependencies]
 # Core dependencies
 rcpcore = { path = "../rcpcore" }
-# Removed rcp-server dependency as we're integrating it directly
 
 # Command line and async
-clap = { version = "3.2", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
 
 # Serialization
@@ -63,12 +61,10 @@ rustls = "0.21"
 webpki-roots = "0.25"
 
 # Utilities
-dirs = { version = "4.0", optional = true }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 futures-util = "0.3"
 async-trait = "0.1.88"
 libc = "0.2"
-chrono = { version = "0.4", features = ["serde"] }
 
 # Platform-specific dependencies
 [target.'cfg(unix)'.dependencies]
@@ -82,6 +78,7 @@ colored = { version = "2.1", optional = true }
 clap_complete = { version = "4.5", optional = true }
 chrono = { version = "0.4", features = ["serde"], optional = true }
 atty = { version = "0.2", optional = true }
+dirs = { version = "4.0", optional = true }
 
 # API server dependencies (feature-gated)
 axum = { version = "0.6", optional = true }
