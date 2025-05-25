@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use sqlx::types::chrono::Utc;
+use chrono::Utc;
 use std::collections::HashMap;
 use std::process::Command;
 use uuid::Uuid;
