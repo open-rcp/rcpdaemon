@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
+use sqlx::types::chrono::Utc;
 use std::collections::HashMap;
 use std::process::Command;
 use uuid::Uuid;
@@ -267,8 +268,8 @@ impl AuthProvider for WindowsAuthProvider {
             email: None,                // Windows doesn't have email in user DB by default
             role,
             password_hash: "".to_string(), // We don't store passwords
-            created_at: chrono::Utc::now().to_rfc3339(), // Use proper timestamp format
-            updated_at: chrono::Utc::now().to_rfc3339(), // Use proper timestamp format
+            created_at: Utc::now().to_rfc3339(), // Use proper timestamp format
+            updated_at: Utc::now().to_rfc3339(), // Use proper timestamp format
         };
 
         Ok(Some(user))
