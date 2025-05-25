@@ -29,7 +29,6 @@ cli = [
     "colored",
     "clap_complete",
     "dirs",
-    "chrono",
     "atty"
 ]
 all = ["api", "cli"]
@@ -37,6 +36,7 @@ all = ["api", "cli"]
 [dependencies]
 # Core dependencies
 rcpcore = { path = "../rcpcore" }
+chrono = { version = "0.4", features = ["serde"] }
 
 # Command line and async
 clap = { version = "4.5", features = ["derive"] }
@@ -76,7 +76,6 @@ windows-service = "0.7"
 # CLI specific dependencies (feature-gated)
 colored = { version = "2.1", optional = true }
 clap_complete = { version = "4.5", optional = true }
-chrono = { version = "0.4", features = ["serde"], optional = true }
 atty = { version = "0.2", optional = true }
 dirs = { version = "4.0", optional = true }
 
